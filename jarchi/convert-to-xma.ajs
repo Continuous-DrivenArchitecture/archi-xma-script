@@ -22,11 +22,18 @@ console.show();
 console.clear();
 
 console.log("=== step 1: confirm a model is selected and saved ===");
-if (!model.isSet()) {
+// Not using model.isSet() -- it was only added in jArchi 1.9 ("Unknown
+// identifier" on older installs, confirmed live). A plain try/catch around
+// model.getPath() works on every jArchi version: if no model is selected,
+// Archi itself throws ArchiScriptException("Could not get the currently
+// selected model...") when `model` is first accessed.
+var modelPath;
+try {
+  modelPath = model.getPath();
+} catch (e) {
   window.alert("No hay un modelo seleccionado. Selecciona un modelo y vuelve a intentar.");
-  throw new Error("No model selected");
+  throw e;
 }
-var modelPath = model.getPath();
 if (!modelPath) {
   window.alert("El modelo no está guardado en disco todavía. Guárdalo primero (el script necesita leer su archivo .archimate).");
   throw new Error("Model has not been saved to disk");

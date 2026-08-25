@@ -1,16 +1,72 @@
 # archi-xma-script
 
-A [jArchi](https://github.com/archimatetool/archi-scripting-plugin) script
-that converts an Archi model to XMA **from inside Archi itself** — no
-Node.js, no Docker, no separate CLI tool. It reuses
+Convierte un modelo de Archi a formato XMA **sin salir de Archi** — no
+necesitas instalar Node.js, Docker, ni ninguna herramienta de línea de
+comandos. Es un script que corre dentro del propio editor.
+
+## Requisitos
+
+- Tener **Archi** instalado.
+- Tener instalado el **plugin de scripting jArchi** dentro de Archi (es un
+  plugin aparte, no viene instalado por defecto — se instala una sola vez
+  desde el menú *Help → Manage Plug-ins...* de Archi; el archivo del plugin
+  se descarga desde [archimatetool.com/plugins](https://www.archimatetool.com/plugins/)).
+- El modelo que quieras convertir debe estar **guardado en disco** (el
+  script lee el archivo `.archimate` real, no solo lo que está abierto sin
+  guardar).
+
+## Instalación (una sola vez)
+
+1. Ve a la página de [**Releases**](https://github.com/Continuous-DrivenArchitecture/archi-xma-script/releases/latest)
+   de este repositorio y descarga estos dos archivos de la versión más
+   reciente:
+   - `archi-xma-script.bundle.cjs`
+   - `convert-to-xma.ajs`
+
+   **Importante:** descarga siempre los dos del mismo release — no mezcles
+   archivos de versiones distintas.
+
+2. Abre Archi y abre el panel **Scripts Manager** (si no lo ves, en el menú
+   *Window* elige *Reset Window Layout*, o revisa el menú *Tools*).
+
+3. Arrastra los dos archivos descargados directamente a ese panel (Archi te
+   preguntará si quieres copiarlos o solo enlazarlos — cualquiera de las
+   dos opciones funciona, pero ambos archivos deben quedar juntos, en la
+   misma carpeta dentro del Scripts Manager).
+
+## Cómo usarlo
+
+1. Abre el modelo que quieres convertir y **guárdalo** (si tiene cambios sin
+   guardar, guárdalo primero).
+2. Selecciónalo en el árbol de modelos (Models Tree), a la izquierda.
+3. En el Scripts Manager, busca `convert-to-xma.ajs` y haz doble clic para
+   correrlo (o clic derecho → *Run Script*).
+4. Cuando termine, aparece un mensaje indicando dónde quedó el archivo
+   convertido: se guarda **en la misma carpeta que tu archivo original**,
+   con el mismo nombre, terminando en `.xma` en vez de `.archimate`.
+
+## Si algo sale mal
+
+Abre la **Consola** de scripts (botón *Show Console* en el Scripts Manager)
+antes de volver a correr el script — ahí aparece el detalle exacto de
+cualquier error o advertencia. Si necesitas ayuda, copia el mensaje
+completo de la consola.
+
+---
+
+## For developers
+
+Everything below is for people modifying this repository's code — not
+needed to just use the script.
+
+This repository adds no XMA conversion logic of its own. It reuses
 [`@cda/archi-semantic-core`](https://github.com/Continuous-DrivenArchitecture/archi-semantic-core)
 (parsing) and
 [`@cda/adapter-xma`](https://github.com/Continuous-DrivenArchitecture/adapter-xma)
-(mapping, geometry, and XMA serialization) exactly as they are — this
-repository adds no conversion logic of its own, only the plumbing needed to
-run that existing, tested logic inside jArchi's script engine.
+(mapping, geometry, and XMA serialization) exactly as they are, and bundles
+them so jArchi can load them.
 
-## Why this needs a bundle
+### Why this needs a bundle
 
 jArchi scripts run on a GraalVM JavaScript engine embedded in Archi, not on
 Node.js. Two concrete incompatibilities rule out installing
@@ -33,26 +89,7 @@ converted changes — it's the exact same `parseArchiModel` +
 `serializeXma`/`inspectXmaSupport` pipeline `app-model-converter` runs in
 Node, just packaged differently.
 
-## Installing
-
-1. Download `archi-xma-script.bundle.cjs` and `convert-to-xma.ajs` from the
-   [latest Release](https://github.com/Continuous-DrivenArchitecture/archi-xma-script/releases/latest)
-   — always download both from the **same** release; the bundle's public
-   API can change between versions.
-2. Put both files in the **same folder** inside your jArchi Scripts Manager
-   (e.g. a `Scripts/xma/` folder). The script loads the bundle by relative
-   path, not through `node_modules`.
-
-## Using it
-
-1. Open (and save, at least once) the Archi model you want to convert.
-2. Select it in the Models Tree.
-3. Run `convert-to-xma.ajs` from the Scripts Manager.
-4. The `.xma` file is written next to the source `.archimate` file. Any
-   diagnostics (warnings or errors from the conversion) print to the jArchi
-   Console.
-
-## Repository layout
+### Repository layout
 
 ```
 src/index.ts                    convertArchiToXma() -- the public API this
@@ -64,7 +101,8 @@ scripts/shims/                  pure-JS replacements for the two Node
                                  built-ins archi-semantic-core needs
                                  (node:zlib, Buffer) -- see their own
                                  comments for exactly why each exists
-jarchi/convert-to-xma.ajs       the actual script you run inside Archi
+jarchi/convert-to-xma.ajs       the actual script an end user runs inside
+                                 Archi -- see the user-facing section above
 ```
 
 `npm run bundle` builds the jArchi artifact locally; CI builds and attaches
@@ -73,7 +111,7 @@ both files to every GitHub Release (see `.releaserc.json`). This package is
 an installable library, though `src/index.ts` is still exported/tested like
 one so its logic stays independently verifiable.
 
-## Governance contracts implemented
+### Governance contracts implemented
 
 This repository follows **CDA Repository Standard v1** (branching, PR,
 merge, Actions-security, and hygiene rules common to every CDA repository)
