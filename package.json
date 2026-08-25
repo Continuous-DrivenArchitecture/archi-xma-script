@@ -1,11 +1,13 @@
 {
-  "name": "@cda/template-npm-library",
+  "name": "@cda/archi-xma-script",
   "version": "0.0.0-development",
-  "private": true,
-  "description": "PLACEHOLDER — CDA npm Library Profile v1 reference template. Rename before deriving a real repository.",
+  "description": "A jArchi script that converts an Archi model to XMA directly from inside Archi, by bundling @cda/archi-semantic-core + @cda/adapter-xma (with pure-JS polyfills for the Node built-ins jArchi's script engine doesn't provide). Not published to npm -- the deliverable is a downloadable bundle + .ajs script, attached to each GitHub Release.",
   "keywords": [
     "cda",
-    "template"
+    "archimate",
+    "archi",
+    "jarchi",
+    "xma"
   ],
   "license": "MIT",
   "type": "module",
@@ -23,28 +25,30 @@
   "files": [
     "dist"
   ],
-  "publishConfig": {
-    "access": "public",
-    "provenance": true
-  },
   "sideEffects": false,
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "build": "tsc -p tsconfig.build.json",
+    "bundle": "node scripts/build-jarchi-bundle.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "verify-pack": "node scripts/verify-pack.mjs",
-    "verify-consumption": "node scripts/verify-package-consumption.mjs",
-    "prepublishOnly": "npm run typecheck && npm run lint && npm run build && npm test"
+    "verify-consumption": "node scripts/verify-package-consumption.mjs"
+  },
+  "dependencies": {
+    "@cda/adapter-xma": "^0.12.2",
+    "@cda/archi-semantic-core": "^0.5.0"
   },
   "devDependencies": {
     "@semantic-release/commit-analyzer": "^13.0.1",
     "@semantic-release/github": "^12.0.9",
-    "@semantic-release/npm": "^13.1.5",
     "@semantic-release/release-notes-generator": "^14.1.1",
     "@types/node": "^26.2.0",
+    "buffer": "^6.0.3",
+    "esbuild": "^0.28.0",
     "eslint": "^10.9.0",
+    "fflate": "^0.8.2",
     "semantic-release": "^25.0.9",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.67.0",
@@ -52,10 +56,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Continuous-DrivenArchitecture/REPLACE_ME.git"
+    "url": "git+https://github.com/Continuous-DrivenArchitecture/archi-xma-script.git"
   },
-  "homepage": "https://github.com/Continuous-DrivenArchitecture/REPLACE_ME#readme",
+  "homepage": "https://github.com/Continuous-DrivenArchitecture/archi-xma-script#readme",
   "bugs": {
-    "url": "https://github.com/Continuous-DrivenArchitecture/REPLACE_ME/issues"
+    "url": "https://github.com/Continuous-DrivenArchitecture/archi-xma-script/issues"
   }
 }

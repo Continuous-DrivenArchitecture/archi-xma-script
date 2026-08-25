@@ -1,0 +1,96 @@
+/*
+ * Converts the current model to XMA, from inside Archi -- no Node.js,
+ * no Docker, no separate CLI. Requires `archi-xma-script.bundle.cjs` to sit
+ * in this same folder (see README.md, "Installing"): both files are
+ * attached to every GitHub Release of this repository as a pair.
+ *
+ * Loads the bundle by relative path (`require(__DIR__ + "...")`) rather
+ * than via a `node_modules` package folder -- jArchi's own docs confirm
+ * `require("Path/To/File.js")` loads a self-contained CommonJS module
+ * directly, and the bundle IS self-contained (see the main build script,
+ * scripts/build-jarchi-bundle.mjs): no further require() resolution
+ * happens inside it.
+ *
+ * Every risky step is isolated with its own try/catch and a clear
+ * "before"/"after" marker -- the pattern this project's sibling scripts
+ * (in Continuous-DrivenArchitecture/adapter-xma/scripts/*.ajs) confirmed
+ * necessary for getting an accurate diagnosis on the first real run,
+ * instead of guessing from a generic error.
+ */
+
+console.show();
+console.clear();
+
+console.log("=== step 1: confirm a model is selected and saved ===");
+if (!model.isSet()) {
+  window.alert("No hay un modelo seleccionado. Selecciona un modelo y vuelve a intentar.");
+  throw new Error("No model selected");
+}
+var modelPath = model.getPath();
+if (!modelPath) {
+  window.alert("El modelo no está guardado en disco todavía. Guárdalo primero (el script necesita leer su archivo .archimate).");
+  throw new Error("Model has not been saved to disk");
+}
+console.log("OK -- model.getPath() = " + modelPath);
+
+console.log("\n=== step 2: read the raw .archimate XML from disk ===");
+var xmlText;
+try {
+  var Files = Java.type('java.nio.file.Files');
+  var Paths = Java.type('java.nio.file.Paths');
+  xmlText = Files.readString(Paths.get(modelPath));
+  console.log("OK -- read " + xmlText.length + " characters");
+} catch (e) {
+  console.log("FAILED reading the model file: " + e);
+  throw e;
+}
+
+console.log("\n=== step 3: load the bundled converter ===");
+var convertArchiToXma;
+try {
+  var bundle = require(__DIR__ + "archi-xma-script.bundle.cjs");
+  convertArchiToXma = bundle.convertArchiToXma;
+  console.log("OK -- bundle loaded, convertArchiToXma = " + typeof convertArchiToXma);
+} catch (e) {
+  console.log("FAILED loading archi-xma-script.bundle.cjs: " + e);
+  console.log("Make sure the .bundle.cjs file from the same GitHub Release is in this same folder.");
+  throw e;
+}
+
+console.log("\n=== step 4: convert to XMA ===");
+var result;
+try {
+  result = convertArchiToXma(xmlText);
+  console.log("OK -- produced " + result.xma.length + " characters of XMA, " + result.diagnostics.length + " diagnostic(s)");
+} catch (e) {
+  console.log("FAILED converting to XMA: " + e);
+  if (e.diagnostics) {
+    console.log("Diagnostics:");
+    for (var i = 0; i < e.diagnostics.length; i++) {
+      var d = e.diagnostics[i];
+      console.log("  [" + d.severity + "] " + d.code + ": " + d.message);
+    }
+  }
+  throw e;
+}
+
+if (result.diagnostics.length > 0) {
+  console.log("\n--- diagnostics ---");
+  for (var j = 0; j < result.diagnostics.length; j++) {
+    var diag = result.diagnostics[j];
+    console.log("  [" + diag.severity + "] " + diag.code + ": " + diag.message);
+  }
+}
+
+console.log("\n=== step 5: write the .xma file next to the source model ===");
+try {
+  var outputPath = modelPath.replace(/\.archimate$/i, "") + ".xma";
+  $.fs.writeFile(outputPath, result.xma, "UTF8");
+  console.log("OK -- wrote " + outputPath);
+  window.alert("Conversión completa.\n" + outputPath + "\n\n" + result.diagnostics.length + " diagnóstico(s) -- ver la consola.");
+} catch (e) {
+  console.log("FAILED writing the output file: " + e);
+  throw e;
+}
+
+console.log("\n=== done ===");

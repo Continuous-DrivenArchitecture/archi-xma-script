@@ -2,9 +2,11 @@
 
 ## Supported versions
 
-Only the latest version published on the npm registry is supported with
-security fixes. Patch releases are cut automatically from `main` (see
-CONTRIBUTING.md) — keep the package updated to receive fixes promptly.
+Only the latest GitHub Release is supported with security fixes (this
+repository does not publish to npm — see README.md). Patch releases are cut
+automatically from `main` (see CONTRIBUTING.md) — keep the downloaded
+`archi-xma-script.bundle.cjs`/`convert-to-xma.ajs` pair updated to the
+latest release to receive fixes promptly.
 
 ## Reporting a vulnerability
 
@@ -15,15 +17,9 @@ repository: open the repository's **Security** tab → **Advisories** →
 **Report a vulnerability**. This is a GitHub platform feature that does not
 require a separate contact address.
 
-> This template does not define a maintainer contact address. A repository
-> derived from this template MUST either enable and rely on GitHub Private
-> Vulnerability Reporting (recommended default), or replace this section
-> with a real, monitored reporting channel before publishing the package —
-> do not leave a placeholder email address in place of either.
-
 When filing a report, include:
 
-- the affected package version and how it was obtained;
+- the affected release version and how it was obtained;
 - a minimal reproduction;
 - the impact you observed or suspect.
 
