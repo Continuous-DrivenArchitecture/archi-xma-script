@@ -63,14 +63,23 @@ try {
   // Runtime consumption: import ONLY via the package name, never a
   // relative path into this repo's src/ or dist/.
   const runtimeCheckPath = join(consumerDir, 'runtime-check.mjs');
+  const minimalModel = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<archimate:model xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:archimate="http://www.archimatetool.com/archimate" name="Minimal Model" id="model-minimal" version="5.0.0">',
+    '  <folder name="Business" id="folder-business" type="business">',
+    '    <element xsi:type="archimate:BusinessActor" name="Customer" id="element-customer"/>',
+    '  </folder>',
+    '</archimate:model>',
+  ].join('\n');
   writeFileSync(
     runtimeCheckPath,
     [
-      `import { add } from ${JSON.stringify(pkgName)};`,
+      `import { convertArchiToXma } from ${JSON.stringify(pkgName)};`,
       '',
-      'const result = add(2, 3);',
-      'if (result !== 5) {',
-      '  console.error(`FAIL: expected add(2, 3) === 5, got ${result}`);',
+      `const xml = ${JSON.stringify(minimalModel)};`,
+      'const result = convertArchiToXma(xml);',
+      "if (!result.xma.includes('Customer')) {",
+      "  console.error('FAIL: expected the converted XMA to contain \"Customer\".');",
       '  process.exit(1);',
       '}',
       "console.log('PASS: runtime import + call succeeded via the package name.');",
@@ -87,10 +96,11 @@ try {
   writeFileSync(
     typeCheckPath,
     [
-      `import { add } from ${JSON.stringify(pkgName)};`,
+      `import { convertArchiToXma } from ${JSON.stringify(pkgName)};`,
       '',
-      'const sum: number = add(2, 3);',
-      'void sum;',
+      "const result = convertArchiToXma('<xml/>');",
+      'const xma: string = result.xma;',
+      'void xma;',
       '',
     ].join('\n'),
   );

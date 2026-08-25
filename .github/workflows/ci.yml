@@ -64,6 +64,9 @@ jobs:
       # dist/ is git-ignored and never assumed to be present in a checkout.
       - run: npm run verify-pack
       - run: npm run verify-consumption
+      # Confirms the jArchi bundle -- this package's actual deliverable --
+      # still builds cleanly on every PR, not just at release time.
+      - run: npm run bundle
 
   audit:
     runs-on: ubuntu-latest

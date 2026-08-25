@@ -1,94 +1,83 @@
-# template-npm-library
+# archi-xma-script
 
-**This is a template, not a library.** It exists to be copied and turned into
-a real `@cda/*` package — it does not ship a real public API of its own.
+A [jArchi](https://github.com/archimatetool/archi-scripting-plugin) script
+that converts an Archi model to XMA **from inside Archi itself** — no
+Node.js, no Docker, no separate CLI tool. It reuses
+[`@cda/archi-semantic-core`](https://github.com/Continuous-DrivenArchitecture/archi-semantic-core)
+(parsing) and
+[`@cda/adapter-xma`](https://github.com/Continuous-DrivenArchitecture/adapter-xma)
+(mapping, geometry, and XMA serialization) exactly as they are — this
+repository adds no conversion logic of its own, only the plumbing needed to
+run that existing, tested logic inside jArchi's script engine.
 
-## What this is
+## Why this needs a bundle
 
-A minimal, fully operational TypeScript npm library that implements
-**CDA npm Library Profile v1** (which extends **CDA Repository Standard
-v1**) end to end: package structure, CI, package verification, and an
-immutable-`main` release pipeline (semantic-release → git tag → GitHub
-Release → npm Trusted Publishing). Every file in this repository either
-implements a specific rule from those two contracts or is generic scaffolding
-a library needs regardless of what it does (a placeholder source file, a
-test, tool config).
+jArchi scripts run on a GraalVM JavaScript engine embedded in Archi, not on
+Node.js. Two concrete incompatibilities rule out installing
+`@cda/archi-semantic-core`/`@cda/adapter-xma` as ordinary dependencies:
 
-It intentionally contains **no CDA domain logic**. `src/index.ts` exports a
-single trivial function whose only job is to prove the full chain works:
-source compiles → builds → ships type declarations → gets correctly packed
-→ can be imported by a real consumer that only has the published package,
-not this source tree.
+- **jArchi has no real npm.** Its own docs are explicit: modules must be
+  placed manually under a `node_modules` folder next to your scripts — there
+  is no dependency resolution.
+- **`@cda/archi-semantic-core` is ESM-only**, and jArchi's `require()`
+  only supports CommonJS. It also imports `node:zlib` (for the rare
+  zip-format `.archimate` file with embedded images) — a real Node built-in
+  jArchi's engine does not provide.
 
-## What a new repository must replace
+So this repository compiles both packages (plus a pure-JS `node:zlib`
+substitute, via [`fflate`](https://github.com/101arrowz/fflate), and a
+`Buffer` polyfill, via the [`buffer`](https://github.com/feross/buffer)
+package) into one self-contained CommonJS file with `esbuild`
+(`scripts/build-jarchi-bundle.mjs`). Nothing about *how* a model gets
+converted changes — it's the exact same `parseArchiModel` +
+`serializeXma`/`inspectXmaSupport` pipeline `app-model-converter` runs in
+Node, just packaged differently.
 
-Before this template becomes a real library, replace:
+## Installing
 
-- `package.json`: `name` (currently `@cda/template-npm-library`, a
-  placeholder), `description`, `keywords`, `repository`/`homepage`/`bugs`
-  URLs (currently pointing at `.../REPLACE_ME`), and remove the top-level
-  `"private": true` field — it exists only so this template cannot be
-  published by accident.
-- `src/index.ts` and `tests/index.test.ts`: replace the placeholder `add`
-  function with the library's real public API, exported the same way (via
-  the `exports` map in `package.json`).
-- `README.md` (this file), `LICENSE` copyright line, and `SECURITY.md`'s
-  reporting-channel note.
-- `.releaserc.json`'s `branches` field only if the new repository's default
-  branch is not `main` — it must not be anything else per the baseline, so
-  in practice this does not change.
+1. Download `archi-xma-script.bundle.cjs` and `convert-to-xma.ajs` from the
+   [latest Release](https://github.com/Continuous-DrivenArchitecture/archi-xma-script/releases/latest)
+   — always download both from the **same** release; the bundle's public
+   API can change between versions.
+2. Put both files in the **same folder** inside your jArchi Scripts Manager
+   (e.g. a `Scripts/xma/` folder). The script loads the bundle by relative
+   path, not through `node_modules`.
 
-Everything else — CI structure, the release workflow, `verify-pack`,
-`verify-package-consumption.mjs`, Dependabot config, the PR template — is
-meant to be kept as-is.
+## Using it
 
-## Initializing a new repository from this template
+1. Open (and save, at least once) the Archi model you want to convert.
+2. Select it in the Models Tree.
+3. Run `convert-to-xma.ajs` from the Scripts Manager.
+4. The `.xma` file is written next to the source `.archimate` file. Any
+   diagnostics (warnings or errors from the conversion) print to the jArchi
+   Console.
 
-1. Copy this directory's contents into the new repository (or use it as a
-   GitHub template repository once one is created from it — that step is
-   external to this template; see `runbooks/setup-repository.md`).
-2. Make the replacements listed above.
-3. Run the local validation sequence below and confirm it passes.
-4. Follow `runbooks/setup-repository.md` for everything that must be
-   configured *outside* this repository (GitHub ruleset, Actions settings,
-   npm Trusted Publisher) before the first real release.
-
-## Running validations locally
+## Repository layout
 
 ```
-npm ci
-npm run typecheck
-npm run lint
-npm test
-npm run build
-npm run verify-pack
-npm run verify-consumption
-npm audit --omit=dev
-npm sbom --sbom-format=spdx --omit=dev
-npm pack --dry-run
+src/index.ts                    convertArchiToXma() -- the public API this
+                                 package exists to bundle. Tested normally
+                                 with Vitest against real Node.
+scripts/build-jarchi-bundle.mjs esbuild config that produces the jArchi
+                                 bundle (dist/jarchi/archi-xma-script.bundle.cjs)
+scripts/shims/                  pure-JS replacements for the two Node
+                                 built-ins archi-semantic-core needs
+                                 (node:zlib, Buffer) -- see their own
+                                 comments for exactly why each exists
+jarchi/convert-to-xma.ajs       the actual script you run inside Archi
 ```
 
-`verify-pack` and `verify-consumption` are what actually prove the package
-is publishable — passing `npm test` alone is not sufficient (see
-CONTRIBUTING.md).
-
-## What still needs external configuration
-
-This repository, on its own, cannot make itself a governed GitHub repository
-or an npm-publishable package — that requires configuration outside version
-control: the `main` branch ruleset, GitHub Actions repository settings,
-Dependabot/security toggles, and the npm Trusted Publisher binding. None of
-that is applied by this template. See `runbooks/setup-repository.md` for the
-full, explicit list of what's already provided as files here versus what
-must still be configured externally.
+`npm run bundle` builds the jArchi artifact locally; CI builds and attaches
+both files to every GitHub Release (see `.releaserc.json`). This package is
+**not published to npm** — the deliverable is the release attachment, not
+an installable library, though `src/index.ts` is still exported/tested like
+one so its logic stays independently verifiable.
 
 ## Governance contracts implemented
 
-- **CDA Repository Standard v1** — organization-wide branching, PR, merge,
-  Actions-security, and hygiene rules that apply to every CDA repository.
-- **CDA npm Library Profile v1** — extends the above with npm-library-
-  specific rules: package contract, package verification, semantic-release,
-  npm Trusted Publishing, and the immutable-`main` release model.
-
-See `COMPLIANCE.md` for a concrete requirement-by-requirement mapping
-between those two documents and what this repository actually implements.
+This repository follows **CDA Repository Standard v1** (branching, PR,
+merge, Actions-security, and hygiene rules common to every CDA repository)
+via the `repository-baseline` profile — not the full **CDA npm Library
+Profile v1** used by `@cda/*` packages that actually publish to npm, since
+this repository's deliverable is a release attachment, not a published
+package. See `CONTRIBUTING.md`.

@@ -1,11 +1,12 @@
 # Contributing
 
-This repository implements two authoritative CDA governance contracts:
-**CDA Repository Baseline v1** and **CDA npm Library Profile v1** (maintained
-in the `Continuous-DrivenArchitecture` organization's standards documentation;
-consult your organization's copy of `docs/standards/` for the full text).
-Those documents are authoritative; this file explains how they apply here in
-practice, and does not restate them in full.
+This repository implements **CDA Repository Baseline v1** (maintained in the
+`Continuous-DrivenArchitecture` organization's standards documentation;
+consult your organization's copy of `docs/standards/` for the full text) —
+not the full **CDA npm Library Profile v1**, since this repository does not
+publish to npm (see README.md). Most of this file (branching, commits/PRs,
+squash-merge, SHA-pinning) still applies unchanged; only the release
+mechanics differ from a real `@cda/*` npm package.
 
 ## Branching
 
@@ -56,44 +57,51 @@ every repository derived from this template — don't mix the two.
 
 ## Release
 
-Releases are cut only from `main`, automatically, by `semantic-release`:
+This repository is **not published to npm** — see README.md. Releases are
+cut only from `main`, automatically, by `semantic-release`:
 
 ```
 squash-merged PR on main
   → semantic-release
   → next version computed from Conventional Commits since the last release
   → git tag (vX.Y.Z)
-  → GitHub Release
-  → npm publish (Trusted Publishing / OIDC)
+  → GitHub Release, with archi-xma-script.bundle.cjs + convert-to-xma.ajs attached
 ```
 
 `main` is never written to as part of this — there is no `chore(release)`
 commit, and `@semantic-release/git` is deliberately not part of this
-template's plugin set. `package.json`'s `version` field on `main` stays at
-the fixed development placeholder `0.0.0-development`; it is not, and is not
-meant to be, the current published version. The authoritative record of the
-latest release is the agreement between the git tag, the GitHub Release, and
-the npm registry version — see the npm Library Profile's "Version source of
-truth."
+repository's plugin set. `package.json`'s `version` field on `main` stays at
+the fixed development placeholder `0.0.0-development`; the authoritative
+record of the latest release is the git tag + the GitHub Release and its
+attached files.
 
-Publishing uses **npm Trusted Publishing (OIDC)** — there is no `NPM_TOKEN`
-in this repository, and none should be added.
+A `refactor:`/`docs:`/`chore:`-only PR does not trigger a release under the
+`conventionalcommits` preset (no `feat`/`fix`/breaking change since the last
+tag) — if a change needs a new release published regardless (e.g. a
+dependency bump that must reach the bundle), use `fix:`/`feat:` and say why
+in the commit body.
 
 ## Package structure
 
-- `src/` — source. Only what's re-exported from `src/index.ts` (and reached
-  through the `exports` map in `package.json`) is public API.
+- `src/` — `convertArchiToXma()`, the real public API this repository
+  exists to bundle. Tested normally with Vitest against real
+  `@cda/archi-semantic-core`/`@cda/adapter-xma` — no mocking.
 - `tests/` — tests, run against the source tree during CI.
 - `dist/` — build output. Never committed; always produced by `npm run
-  build` before it's needed (packaging, publishing, or package-verification
-  checks).
-- `scripts/verify-pack.mjs` — validates the exact tarball `npm publish`
-  would send: required export files present, nothing from `src/`, `tests/`,
-  or repo tooling leaked in.
-- `scripts/verify-package-consumption.mjs` — installs the packed tarball
-  into a throwaway project outside this repository and imports it purely
-  through its public entry points, proving the published package (not just
-  the source tree) actually works for a consumer.
+  build`/`npm run bundle` before it's needed.
+- `scripts/build-jarchi-bundle.mjs` — the esbuild config that produces this
+  repository's actual deliverable, `dist/jarchi/archi-xma-script.bundle.cjs`
+  — see README.md, "Why this needs a bundle" for the full reasoning.
+- `scripts/shims/` — pure-JS replacements for the Node built-ins the
+  bundled code needs (`node:zlib`, `Buffer`) that jArchi's script engine
+  doesn't provide.
+- `jarchi/convert-to-xma.ajs` — the script a user actually runs inside
+  Archi.
+- `scripts/verify-pack.mjs` / `scripts/verify-package-consumption.mjs` —
+  kept from the template as general package-hygiene checks (the `dist/`
+  build output is structurally a valid, importable package, even though
+  this repository never publishes it) — not load-bearing for the jArchi
+  bundle itself, which `npm run bundle` builds and CI verifies separately.
 
-Both scripts run in CI (see `.github/workflows/ci.yml`) and are required
-status checks, via the `ci-required` job.
+All of the above run in CI (see `.github/workflows/ci.yml`) and are
+required status checks, via the `ci-required` job.
